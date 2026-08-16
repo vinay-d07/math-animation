@@ -1,0 +1,10 @@
+node_modules/
+dist/
+output/
+.env
+.env.local
+__pycache__/
+*.pyc
+.venv/
+.next/
+packages/db/node_modules/.prisma/

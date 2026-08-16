@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  clerkId   String   @unique
+  email     String
+  createdAt DateTime @default(now())
+}
+
+model CreditAccount {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @unique @db.ObjectId
+  balance   Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+enum CreditReason {
+  GRANT
+  PREVIEW_RENDER
+  FINAL_RENDER
+  AI_EDIT
+  STORYBOARD_PLAN
+  SCENE_RENDER
+}
+
+model CreditTransaction {
+  id        String       @id @default(auto()) @map("_id") @db.ObjectId
+  accountId String       @db.ObjectId
+  amount    Int
+  reason    CreditReason
+  jobId     String?
+  createdAt DateTime     @default(now())
+}
+
+enum ProjectVisibility {
+  UNLISTED
+  PUBLIC
+}
+
+model Project {
+  id               String            @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String            @db.ObjectId
+  title            String
+  currentVersionId String?           @db.ObjectId
+  visibility       ProjectVisibility @default(UNLISTED)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+enum VersionAuthor {
+  USER
+  AI
+}
+
+model Version {
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  projectId       String        @db.ObjectId
+  code            String
+  sceneClassName  String
+  createdBy       VersionAuthor
+  parentVersionId String?       @db.ObjectId
+  createdAt       DateTime      @default(now())
+}
+
+enum RenderQuality {
+  PREVIEW
+  FINAL
+}
+
+enum RenderStatus {
+  QUEUED
+  ACTIVE
+  COMPLETED
+  FAILED
+}
+
+model Render {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  projectId    String        @db.ObjectId
+  versionId    String        @db.ObjectId
+  quality      RenderQuality
+  status       RenderStatus  @default(QUEUED)
+  jobId        String
+  outputPath   String?
+  errorMessage String?
+  durationMs   Int?
+  createdAt    DateTime      @default(now())
+}
+
+enum VideoProjectStatus {
+  PLANNING
+  PLANNED
+  GENERATING
+  DONE
+  FAILED
+}
+
+model VideoProject {
+  id           String             @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String             @db.ObjectId
+  title        String
+  prompt       String
+  status       VideoProjectStatus @default(PLANNING)
+  errorMessage String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+}
+
+model Scene {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  videoProjectId String       @db.ObjectId
+  order          Int
+  narration      String
+  visualIntent   String
+  sceneClassName String
+  code           String?
+  status         RenderStatus @default(QUEUED)
+  jobId          String?
+  outputUrl      String?
+  errorMessage   String?
+  durationMs     Int?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}

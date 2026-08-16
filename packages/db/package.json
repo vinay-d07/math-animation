@@ -1,0 +1,21 @@
+{
+  "name": "@manim-saas/db",
+  "private": true,
+  "type": "module",
+  "version": "0.0.1",
+  "exports": {
+    ".": "./src/client.ts",
+    "./credits": "./src/credits.ts"
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "push": "prisma db push"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0",
+    "typescript": "^5.7.2"
+  }
+}
