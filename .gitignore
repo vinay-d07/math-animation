@@ -8,3 +8,6 @@ __pycache__/
 .venv/
 .next/
 packages/db/node_modules/.prisma/
+design.md
+enhancement.md
+plan.md
