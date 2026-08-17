@@ -11,6 +11,7 @@ const storyboardSchema = z.object({
       z.object({
         narration: z.string().min(1).max(600),
         visualIntent: z.string().min(1).max(600),
+        explanation: z.string().min(1).max(800),
         sceneClassName: z
           .string()
           .regex(/^[A-Z][A-Za-z0-9]*$/, "must be a PascalCase Python class name"),
@@ -30,6 +31,10 @@ from the simplest idea to the full picture. For each scene write:
 - narration: 1-3 sentences of voiceover script explaining that step, in plain spoken language
 - visualIntent: a concrete, specific description of what should be drawn/animated (shapes,
   equations, motion, colors) — specific enough for someone else to write Manim code from it alone
+- explanation: 2-4 sentences, written for a viewer reading alongside the video (not a voiceover
+  script) — explain *why* this step is true or how it works, the way a good textbook caption
+  would. This is shown as text next to the clip, so it can go into more depth than the narration
+  and may reference the specific equations/shapes on screen.
 - sceneClassName: a unique PascalCase Python class name for that scene (e.g. "IntroEquation")
 
 Keep scope tight — each scene should be renderable as under ~20 seconds of animation with a

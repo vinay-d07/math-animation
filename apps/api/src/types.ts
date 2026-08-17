@@ -9,7 +9,7 @@ export interface RenderJobData {
 }
 
 export interface RenderJobResult {
-  outputPath: string;
+  outputUrl: string;
   renderDurationMs: number;
   totalDurationMs: number;
 }

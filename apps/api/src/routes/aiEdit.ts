@@ -16,7 +16,7 @@ const aiEditSchema = z.object({
 export function registerAiEditRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string } }>(
     "/api/projects/:id/ai-edit",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, config: { rateLimit: { max: 15, timeWindow: "1 minute" } } },
     async (request, reply) => {
       const project = await loadOwnedProject(request.params.id, request.userId);
       if (!project) return reply.code(404).send({ error: "Project not found" });

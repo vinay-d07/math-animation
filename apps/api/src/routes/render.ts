@@ -28,7 +28,7 @@ const MAX_WAIT_MS = 5 * 60 * 1000;
 export function registerRenderRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string } }>(
     "/api/projects/:id/render",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
     async (request, reply) => {
       const project = await prisma.project
         .findUnique({ where: { id: request.params.id } })
@@ -99,11 +99,22 @@ export function registerRenderRoutes(app: FastifyInstance) {
       const startedAt = Date.now();
       let lastStatus = render.status;
 
-      sse.send("status", { status: lastStatus });
-      if (lastStatus === "COMPLETED" || lastStatus === "FAILED") {
+      if (lastStatus === "COMPLETED") {
+        sse.send("status", {
+          status: "COMPLETED",
+          outputUrl: render.outputPath ?? undefined,
+          durationMs: render.durationMs,
+        });
         sse.close();
         return;
       }
+      if (lastStatus === "FAILED") {
+        sse.send("status", { status: "FAILED", errorMessage: render.errorMessage });
+        sse.close();
+        return;
+      }
+
+      sse.send("status", { status: lastStatus });
 
       const interval = setInterval(async () => {
         const latest = await prisma.render.findUnique({ where: { id: render.id } });
@@ -112,7 +123,7 @@ export function registerRenderRoutes(app: FastifyInstance) {
         if (latest.status === "COMPLETED") {
           sse.send("status", {
             status: "COMPLETED",
-            outputUrl: `/media/${latest.jobId}.mp4`,
+            outputUrl: latest.outputPath ?? undefined,
             durationMs: latest.durationMs,
           });
           clearInterval(interval);

@@ -11,7 +11,10 @@ const createSchema = z.object({
 });
 
 export function registerVideoProjectRoutes(app: FastifyInstance) {
-  app.post("/api/video-projects", { preHandler: requireAuth }, async (request, reply) => {
+  app.post(
+    "/api/video-projects",
+    { preHandler: requireAuth, config: { rateLimit: { max: 5, timeWindow: "1 minute" } } },
+    async (request, reply) => {
     const body = createSchema.parse(request.body);
 
     const balance = await getBalance(request.userId);
@@ -58,6 +61,7 @@ export function registerVideoProjectRoutes(app: FastifyInstance) {
             order: i,
             narration: s.narration,
             visualIntent: s.visualIntent,
+            explanation: s.explanation,
             sceneClassName: s.sceneClassName,
             status: "QUEUED",
           },
@@ -102,7 +106,7 @@ export function registerVideoProjectRoutes(app: FastifyInstance) {
 
   app.post<{ Params: { id: string } }>(
     "/api/video-projects/:id/generate",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, config: { rateLimit: { max: 5, timeWindow: "1 minute" } } },
     async (request, reply) => {
       const videoProject = await loadOwnedVideoProject(request.params.id, request.userId);
       if (!videoProject) return reply.code(404).send({ error: "Video project not found" });
