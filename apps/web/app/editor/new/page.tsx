@@ -30,22 +30,22 @@ export default function NewProjectPage() {
     <main className="flex min-h-screen items-center justify-center px-4">
       {error ? (
         <div className="flex max-w-sm flex-col items-center gap-3 text-center">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10 text-red-400">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-mist text-ink">
             <IconAlert className="h-5 w-5" />
           </div>
-          <p className="text-sm text-neutral-300">Couldn&apos;t create your project</p>
-          <p className="text-xs text-neutral-500">{error}</p>
+          <p className="text-body text-ink">Couldn&apos;t create your project</p>
+          <p className="text-caption text-smoke">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-2 rounded-lg bg-neutral-800 px-4 py-2 text-sm hover:bg-neutral-700"
+            className="mt-2 rounded-lg bg-charcoal px-4 py-2 text-caption font-medium text-paper transition hover:bg-ink"
           >
             Try again
           </button>
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-3 text-neutral-400">
-          <IconLoader className="h-6 w-6 text-indigo-400" />
-          <p className="text-sm">Creating your project…</p>
+        <div className="flex flex-col items-center gap-3 text-smoke">
+          <IconLoader className="h-6 w-6" />
+          <p className="text-caption">Creating your project…</p>
         </div>
       )}
     </main>

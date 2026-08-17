@@ -1,11 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import MonacoEditor, { DiffEditor } from "@monaco-editor/react";
-import { createApiClient, type RenderStatus, type Version } from "../lib/api";
+import { createApiClient, resolveMediaUrl, type RenderStatus, type Version } from "../lib/api";
+import { timeAgo } from "../lib/format";
+import { StatusPill, RENDER_STATUS } from "./StatusPill";
 import {
   IconAlert,
+  IconArrowLeft,
   IconCheck,
   IconClock,
   IconCoin,
@@ -23,38 +27,6 @@ type RenderState = {
   outputUrl?: string;
   errorMessage?: string;
 };
-
-const STATUS_STYLES: Record<RenderStatus | "IDLE", { label: string; className: string }> = {
-  IDLE: { label: "No render yet", className: "bg-neutral-800 text-neutral-400" },
-  QUEUED: { label: "Queued", className: "bg-amber-500/15 text-amber-400" },
-  ACTIVE: { label: "Rendering", className: "bg-indigo-500/15 text-indigo-400" },
-  COMPLETED: { label: "Completed", className: "bg-emerald-500/15 text-emerald-400" },
-  FAILED: { label: "Failed", className: "bg-red-500/15 text-red-400" },
-  TIMEOUT: { label: "Timed out", className: "bg-red-500/15 text-red-400" },
-};
-
-function StatusPill({ status }: { status: RenderStatus | "IDLE" }) {
-  const { label, className } = STATUS_STYLES[status];
-  const busy = status === "QUEUED" || status === "ACTIVE";
-  return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${className}`}>
-      {busy && <IconLoader className="h-3 w-3" />}
-      {status === "COMPLETED" && <IconCheck className="h-3 w-3" />}
-      {(status === "FAILED" || status === "TIMEOUT") && <IconAlert className="h-3 w-3" />}
-      {label}
-    </span>
-  );
-}
-
-function timeAgo(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const minutes = Math.floor(diffMs / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
 
 export default function Editor({ projectId }: { projectId: string }) {
   const { getToken } = useAuth();
@@ -153,32 +125,35 @@ export default function Editor({ projectId }: { projectId: string }) {
     setHistoryOpen(false);
   }
 
+  const renderStatus = RENDER_STATUS[render.status];
+
   return (
-    <div className="flex h-screen flex-col bg-neutral-950 text-neutral-100">
-      <header className="flex items-center justify-between border-b border-neutral-800 bg-neutral-950/80 px-4 py-2.5 backdrop-blur">
+    <div className="flex h-screen flex-col bg-paper text-ink">
+      <header className="flex items-center justify-between border-b border-fog bg-paper px-4 py-2.5">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-indigo-500/20 text-indigo-400">
-              <IconFilm className="h-3.5 w-3.5" />
-            </div>
-            <span className="hidden text-sm font-semibold tracking-tight sm:inline">Manim Studio</span>
-          </div>
-          <div className="h-4 w-px bg-neutral-800" />
+          <Link
+            href="/dashboard"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-smoke transition hover:bg-mist hover:text-ink"
+            title="Back to dashboard"
+          >
+            <IconArrowLeft className="h-4 w-4" />
+          </Link>
+          <div className="h-4 w-px bg-fog" />
           <input
-            className="rounded-md border border-transparent bg-neutral-900 px-2.5 py-1 font-mono text-sm text-neutral-200 outline-none transition focus:border-indigo-500/50"
+            className="rounded-lg border border-transparent bg-mist px-2.5 py-1 font-mono text-caption text-ink outline-none transition focus:border-ink"
             value={sceneClassName}
             onChange={(e) => setSceneClassName(e.target.value)}
             spellCheck={false}
           />
-          <StatusPill status={render.status} />
+          <StatusPill label={renderStatus.label} tone={renderStatus.tone} />
         </div>
-        <div className="flex items-center gap-2 text-sm">
-          <span className="mr-1 inline-flex items-center gap-1.5 rounded-full border border-neutral-800 px-2.5 py-1 text-xs text-neutral-400">
-            <IconCoin className="h-3.5 w-3.5 text-amber-400" />
+        <div className="flex items-center gap-2 text-caption">
+          <span className="mr-1 inline-flex items-center gap-1.5 rounded-full border border-fog px-2.5 py-1 text-caption text-smoke">
+            <IconCoin className="h-3.5 w-3.5" />
             {balance ?? "…"}
           </span>
           <button
-            className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-800 px-3 py-1.5 text-sm transition hover:bg-neutral-700"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-pewter px-3 py-1.5 font-medium text-ink transition hover:bg-mist"
             onClick={() => setHistoryOpen((v) => !v)}
           >
             <IconHistory className="h-3.5 w-3.5" />
@@ -186,7 +161,7 @@ export default function Editor({ projectId }: { projectId: string }) {
           </button>
           <button
             disabled={rendering}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-800 px-3 py-1.5 text-sm transition hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-pewter px-3 py-1.5 font-medium text-ink transition hover:bg-mist disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => handleRender("preview")}
           >
             {rendering ? <IconLoader className="h-3.5 w-3.5" /> : <IconPlay className="h-3.5 w-3.5" />}
@@ -194,7 +169,7 @@ export default function Editor({ projectId }: { projectId: string }) {
           </button>
           <button
             disabled={rendering}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-500 px-3 py-1.5 text-sm font-medium text-white shadow-sm shadow-indigo-500/20 transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-charcoal px-3 py-1.5 font-semibold text-paper transition hover:bg-ink disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => handleRender("final")}
           >
             {rendering ? <IconLoader className="h-3.5 w-3.5" /> : <IconFilm className="h-3.5 w-3.5" />}
@@ -204,7 +179,7 @@ export default function Editor({ projectId }: { projectId: string }) {
       </header>
 
       <div className="relative flex flex-1 overflow-hidden">
-        <div className="flex w-1/2 flex-col border-r border-neutral-800">
+        <div className="flex w-1/2 flex-col border-r border-fog">
           {proposedCode == null ? (
             <MonacoEditor
               language="python"
@@ -215,9 +190,9 @@ export default function Editor({ projectId }: { projectId: string }) {
             />
           ) : (
             <div className="flex h-full flex-col">
-              <div className="flex items-center justify-between border-b border-neutral-800 bg-neutral-900/50 px-3 py-2">
-                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-300">
-                  <IconSparkles className="h-3.5 w-3.5 text-indigo-400" />
+              <div className="flex items-center justify-between border-b border-fog bg-mist px-3 py-2">
+                <span className="inline-flex items-center gap-1.5 text-caption font-medium text-ink">
+                  <IconSparkles className="h-3.5 w-3.5" />
                   Reviewing AI-proposed changes
                 </span>
               </div>
@@ -230,16 +205,16 @@ export default function Editor({ projectId }: { projectId: string }) {
                   options={{ minimap: { enabled: false }, fontSize: 13, readOnly: true }}
                 />
               </div>
-              <div className="flex gap-2 border-t border-neutral-800 p-2.5">
+              <div className="flex gap-2 border-t border-fog bg-paper p-2.5">
                 <button
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium transition hover:bg-emerald-500"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-charcoal px-3 py-1.5 text-caption font-semibold text-paper transition hover:bg-ink"
                   onClick={acceptAiEdit}
                 >
                   <IconCheck className="h-3.5 w-3.5" />
                   Accept
                 </button>
                 <button
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-800 px-3 py-1.5 text-sm transition hover:bg-neutral-700"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-pewter px-3 py-1.5 text-caption font-medium text-ink transition hover:bg-mist"
                   onClick={rejectAiEdit}
                 >
                   <IconX className="h-3.5 w-3.5" />
@@ -251,19 +226,19 @@ export default function Editor({ projectId }: { projectId: string }) {
         </div>
 
         <div className="flex w-1/2 flex-col">
-          <div className="flex flex-1 items-center justify-center bg-black/40 p-4">
+          <div className="dark-scroll flex flex-1 items-center justify-center bg-charcoal p-4">
             {render.status === "COMPLETED" && render.outputUrl ? (
               <div className="flex h-full w-full flex-col items-center justify-center gap-3">
                 <video
                   controls
                   autoPlay
-                  className="max-h-full max-w-full rounded-lg shadow-2xl"
-                  src={`${api.apiUrl}${render.outputUrl}`}
+                  className="max-h-full max-w-full rounded-lg"
+                  src={resolveMediaUrl(render.outputUrl)}
                 />
                 <a
-                  href={`${api.apiUrl}${render.outputUrl}`}
+                  href={resolveMediaUrl(render.outputUrl)}
                   download
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-800 px-3 py-1.5 text-xs text-neutral-300 transition hover:bg-neutral-900"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-graphite px-3 py-1.5 text-caption text-fog transition hover:bg-graphite"
                 >
                   <IconDownload className="h-3.5 w-3.5" />
                   Download
@@ -271,47 +246,45 @@ export default function Editor({ projectId }: { projectId: string }) {
               </div>
             ) : render.status === "FAILED" || render.status === "TIMEOUT" ? (
               <div className="flex max-w-md flex-col items-center gap-2 text-center">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10 text-red-400">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-graphite text-fog">
                   <IconAlert className="h-5 w-5" />
                 </div>
-                <p className="text-sm text-neutral-300">
+                <p className="text-body text-fog">
                   {render.status === "TIMEOUT" ? "Render timed out" : "Render failed"}
                 </p>
-                {render.errorMessage && (
-                  <p className="text-xs text-neutral-500">{render.errorMessage}</p>
-                )}
+                {render.errorMessage && <p className="text-caption text-pewter">{render.errorMessage}</p>}
               </div>
             ) : rendering ? (
-              <div className="flex flex-col items-center gap-3 text-neutral-400">
-                <IconLoader className="h-6 w-6 text-indigo-400" />
-                <p className="text-sm">
-                  Rendering… <span className="text-neutral-500">({render.status})</span>
+              <div className="flex flex-col items-center gap-3 text-fog">
+                <IconLoader className="h-6 w-6" />
+                <p className="text-caption">
+                  Rendering… <span className="text-pewter">({render.status})</span>
                 </p>
               </div>
             ) : (
-              <div className="flex flex-col items-center gap-3 text-neutral-600">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-neutral-800">
+              <div className="flex flex-col items-center gap-3 text-pewter">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-graphite">
                   <IconFilm className="h-5 w-5" />
                 </div>
-                <p className="text-sm">No render yet</p>
-                <p className="text-xs text-neutral-700">Click Preview or Render final to get started</p>
+                <p className="text-caption">No render yet</p>
+                <p className="text-caption text-graphite">Click Preview or Render final to get started</p>
               </div>
             )}
           </div>
 
-          <div className="flex h-64 flex-col border-t border-neutral-800 bg-neutral-900/20 p-3">
-            <div className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-neutral-300">
-              <IconSparkles className="h-4 w-4 text-indigo-400" />
+          <div className="flex h-64 flex-col border-t border-fog bg-paper p-3">
+            <div className="mb-2 inline-flex items-center gap-1.5 text-caption font-semibold text-ink">
+              <IconSparkles className="h-4 w-4" />
               AI edit
             </div>
             {aiError && (
-              <div className="mb-2 inline-flex items-start gap-1.5 rounded-md bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400">
+              <div className="mb-2 inline-flex items-start gap-1.5 rounded-lg border border-ink px-2.5 py-1.5 text-caption text-ink">
                 <IconAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 {aiError}
               </div>
             )}
             <textarea
-              className="mb-2 flex-1 resize-none rounded-lg border border-neutral-800 bg-neutral-900 p-2.5 text-sm outline-none transition placeholder:text-neutral-600 focus:border-indigo-500/50 disabled:opacity-60"
+              className="mb-2 flex-1 resize-none rounded-lg border border-fog bg-paper p-2.5 text-caption text-ink outline-none transition placeholder:text-pewter focus:border-ink disabled:opacity-60"
               placeholder="Describe the change you want… e.g. “make the title fade in slower”"
               value={instruction}
               onChange={(e) => setInstruction(e.target.value)}
@@ -319,7 +292,7 @@ export default function Editor({ projectId }: { projectId: string }) {
             />
             <button
               disabled={aiStreaming || !instruction.trim()}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-500 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-charcoal px-3 py-1.5 text-caption font-semibold text-paper transition hover:bg-ink disabled:cursor-not-allowed disabled:opacity-50"
               onClick={handleAiEdit}
             >
               {aiStreaming ? (
@@ -339,18 +312,15 @@ export default function Editor({ projectId }: { projectId: string }) {
 
         {historyOpen && (
           <>
-            <div
-              className="absolute inset-0 z-10 bg-black/20"
-              onClick={() => setHistoryOpen(false)}
-            />
-            <div className="absolute right-0 top-0 z-20 h-full w-80 animate-slide-in overflow-y-auto border-l border-neutral-800 bg-neutral-950 shadow-2xl">
-              <div className="flex items-center justify-between border-b border-neutral-800 px-4 py-3">
-                <div className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-200">
+            <div className="absolute inset-0 z-10 bg-ink/20" onClick={() => setHistoryOpen(false)} />
+            <div className="absolute right-0 top-0 z-20 h-full w-80 animate-slide-in overflow-y-auto border-l border-fog bg-paper shadow-2xl">
+              <div className="flex items-center justify-between border-b border-fog px-4 py-3">
+                <div className="inline-flex items-center gap-1.5 text-caption font-semibold text-ink">
                   <IconHistory className="h-4 w-4" />
                   Version history
                 </div>
                 <button
-                  className="rounded-md p-1 text-neutral-500 transition hover:bg-neutral-900 hover:text-neutral-300"
+                  className="rounded-lg p-1 text-smoke transition hover:bg-mist hover:text-ink"
                   onClick={() => setHistoryOpen(false)}
                 >
                   <IconX className="h-4 w-4" />
@@ -358,31 +328,26 @@ export default function Editor({ projectId }: { projectId: string }) {
               </div>
               <ul className="flex flex-col gap-2 p-3">
                 {versions.length === 0 && (
-                  <li className="px-1 py-6 text-center text-xs text-neutral-600">No versions yet</li>
+                  <li className="px-1 py-6 text-center text-caption text-pewter">No versions yet</li>
                 )}
                 {versions.map((v) => (
-                  <li
-                    key={v.id}
-                    className="rounded-lg border border-neutral-800 bg-neutral-900/40 p-3 text-xs transition hover:border-neutral-700"
-                  >
+                  <li key={v.id} className="rounded-xl border border-fog bg-paper p-3 text-caption transition hover:border-pewter">
                     <div className="mb-2 flex items-center justify-between">
                       <span
                         className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                          v.createdBy === "AI"
-                            ? "bg-indigo-500/15 text-indigo-400"
-                            : "bg-neutral-800 text-neutral-400"
+                          v.createdBy === "AI" ? "bg-mist text-ink" : "bg-ash text-smoke"
                         }`}
                       >
                         {v.createdBy === "AI" && <IconSparkles className="h-3 w-3" />}
                         {v.createdBy}
                       </span>
-                      <span className="inline-flex items-center gap-1 text-neutral-600">
+                      <span className="inline-flex items-center gap-1 text-smoke">
                         <IconClock className="h-3 w-3" />
                         {timeAgo(v.createdAt)}
                       </span>
                     </div>
                     <button
-                      className="w-full rounded-md bg-neutral-800 px-2 py-1.5 text-center transition hover:bg-neutral-700"
+                      className="w-full rounded-lg border border-pewter px-2 py-1.5 text-center font-medium text-ink transition hover:bg-mist"
                       onClick={() => handleRollback(v.id)}
                     >
                       Restore this version

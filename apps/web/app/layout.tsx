@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import Nav from "../components/Nav";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -12,9 +13,25 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider appearance={{ variables: { colorPrimary: "#6366f1" } }}>
+    <ClerkProvider
+      appearance={{
+        variables: {
+          colorPrimary: "#25272d",
+          colorText: "#151619",
+          colorTextSecondary: "#7f8491",
+          colorBackground: "#ffffff",
+          colorInputBackground: "#ffffff",
+          colorInputText: "#151619",
+          borderRadius: "8px",
+          fontFamily: "var(--font-sans)",
+        },
+      }}
+    >
       <html lang="en" className={inter.variable}>
-        <body className="bg-neutral-950 font-sans text-neutral-100 antialiased">{children}</body>
+        <body className="bg-paper font-sans text-ink antialiased">
+          <Nav />
+          {children}
+        </body>
       </html>
     </ClerkProvider>
   );

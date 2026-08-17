@@ -2,10 +2,16 @@ import { consumeSSE } from "./sse";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
+/** Render output URLs are absolute (Supabase Storage); only prefix legacy relative paths. */
+export function resolveMediaUrl(url: string): string {
+  return /^https?:\/\//.test(url) ? url : `${API_URL}${url}`;
+}
+
 export interface Project {
   id: string;
   title: string;
   currentVersionId: string | null;
+  updatedAt: string;
 }
 
 export interface Version {
@@ -36,6 +42,7 @@ export interface Scene {
   order: number;
   narration: string;
   visualIntent: string;
+  explanation: string | null;
   sceneClassName: string;
   code: string | null;
   status: RenderStatus;
@@ -74,6 +81,8 @@ export function createApiClient(getToken: () => Promise<string | null>) {
         method: "POST",
         body: JSON.stringify({ title }),
       }),
+
+    listProjects: () => apiFetch<Project[]>(getToken, "/api/projects"),
 
     getProject: (id: string) =>
       apiFetch<{ project: Project; currentVersion: Version | null }>(getToken, `/api/projects/${id}`),
