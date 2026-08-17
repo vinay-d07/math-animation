@@ -3,13 +3,3 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
-
-
-  render-worker:
-    build:
-      context: ./worker
-    ports:
-      - "8000:8000"
-    mem_limit: 1g
-    cpus: 1.0
-

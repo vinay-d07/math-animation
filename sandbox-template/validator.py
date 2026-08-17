@@ -1,10 +1,11 @@
 """Static AST-based safety check for AI/user-authored scene code.
 
-This runs before a job is ever enqueued for execution. It is defense-in-depth,
-not a sandbox: it rejects code that references disallowed modules or builtins,
-but it never executes anything. Real isolation (no network egress, capped
-resources, ephemeral fs) still has to happen at the execution boundary — this
-just keeps obviously hostile code from reaching that boundary at all.
+Baked into the E2B sandbox image (see e2b.Dockerfile) and run as the first
+command of every render, before manim ever touches the file — a real parse
+of the actual code that's about to execute, from inside the same isolation
+boundary. The Node-side pre-filter (apps/api/src/validation/astGuard.ts) is
+a cheap regex reject that runs before a sandbox is even created; this is
+the authoritative check.
 """
 
 import ast
@@ -66,3 +67,19 @@ def validate_scene(code: str) -> ValidationResult:
                 return ValidationResult(ok=False, reason=f"Disallowed attribute access: {node.attr}")
 
     return ValidationResult(ok=True)
+
+
+if __name__ == "__main__":
+    # CLI entrypoint: `python3 validator.py <path-to-scene.py>`. Always
+    # exits 0 and prints a JSON verdict on stdout — a rejection is an
+    # expected outcome, not a process error, so it shouldn't be signaled
+    # via exit code (the caller reads the JSON either way).
+    import json
+    import sys
+
+    scene_path = sys.argv[1]
+    with open(scene_path, "r", encoding="utf-8") as f:
+        scene_code = f.read()
+
+    result = validate_scene(scene_code)
+    print(json.dumps({"ok": result.ok, "reason": result.reason}))
