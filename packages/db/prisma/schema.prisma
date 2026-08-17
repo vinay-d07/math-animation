@@ -119,6 +119,7 @@ model Scene {
   order          Int
   narration      String
   visualIntent   String
+  explanation    String?
   sceneClassName String
   code           String?
   status         RenderStatus @default(QUEUED)
