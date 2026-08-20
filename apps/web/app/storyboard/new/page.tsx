@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import { createApiClient } from "../../../lib/api";
+import { createApiClient, type VideoProjectMode } from "../../../lib/api";
 import { IconAlert, IconLoader, IconSparkles } from "../../../components/icons";
 
 const EXAMPLES = [
@@ -12,10 +12,16 @@ const EXAMPLES = [
   "What is a Taylor series, visually?",
 ];
 
+const MODES: { value: VideoProjectMode; label: string; description: string }[] = [
+  { value: "SCENES", label: "Quick scenes", description: "A few short, silent clips — fast preview, no voiceover." },
+  { value: "SHORT", label: "Full narrated short", description: "A 2-5 min explainer with voiceover, stitched into one video." },
+];
+
 export default function NewStoryboardPage() {
   const router = useRouter();
   const { getToken } = useAuth();
   const [prompt, setPrompt] = useState("");
+  const [mode, setMode] = useState<VideoProjectMode>("SCENES");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,7 +31,7 @@ export default function NewStoryboardPage() {
     setError(null);
     try {
       const api = createApiClient(getToken);
-      const { videoProject } = await api.createVideoProject(prompt.trim());
+      const { videoProject } = await api.createVideoProject(prompt.trim(), mode);
       router.push(`/storyboard/${videoProject.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create storyboard");
@@ -43,6 +49,23 @@ export default function NewStoryboardPage() {
         </p>
 
         <div className="mt-8 flex flex-col gap-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {MODES.map((m) => (
+              <button
+                key={m.value}
+                type="button"
+                disabled={submitting}
+                onClick={() => setMode(m.value)}
+                className={`rounded-xl border p-3.5 text-left transition disabled:opacity-50 ${
+                  mode === m.value ? "border-ink bg-mist" : "border-fog hover:border-pewter"
+                }`}
+              >
+                <div className="text-caption font-semibold text-ink">{m.label}</div>
+                <div className="mt-1 text-caption text-smoke">{m.description}</div>
+              </button>
+            ))}
+          </div>
+
           <textarea
             className="min-h-28 resize-none rounded-xl border border-fog bg-paper p-3.5 text-body text-ink outline-none transition placeholder:text-pewter focus:border-ink"
             placeholder="e.g. Explain the chain rule with a worked example"

@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Oswald } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import Nav from "../components/Nav";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const oswald = Oswald({ subsets: ["latin"], variable: "--font-display", weight: ["500", "600", "700"] });
 
 export const metadata: Metadata = {
   title: "Manim Studio",
@@ -27,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         },
       }}
     >
-      <html lang="en" className={inter.variable}>
+      <html lang="en" className={`${inter.variable} ${oswald.variable}`}>
         <body className="bg-paper font-sans text-ink antialiased">
           <Nav />
           {children}

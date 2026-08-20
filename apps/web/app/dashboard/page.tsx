@@ -24,22 +24,26 @@ export default function DashboardPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-[1200px] flex-col gap-16 px-6 py-16 sm:px-10">
-      <header className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+      <header className="flex flex-col gap-8 border-b-2 border-black pb-8 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-heading-lg font-bold tracking-tight text-ink">Your projects</h1>
-          <p className="mt-2 text-body text-smoke">Every video and code project you've started, in one place.</p>
+          <h1 className="font-display text-[56px] font-semibold uppercase leading-[0.95] tracking-tight text-black sm:text-[72px]">
+            Your
+            <br />
+            Projects
+          </h1>
+          <p className="mt-3 text-body text-smoke">Every video and code project you&apos;ve started, in one place.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Link
             href="/storyboard/new"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-charcoal px-4 py-2.5 text-caption font-semibold text-paper transition hover:bg-ink"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-black px-4 py-2.5 text-caption font-semibold text-paper transition hover:bg-charcoal"
           >
             <IconSparkles className="h-3.5 w-3.5" />
             New video
           </Link>
           <Link
             href="/editor/new"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-pewter px-4 py-2.5 text-caption font-medium text-ink transition hover:bg-mist"
+            className="inline-flex items-center gap-1.5 rounded-lg border-2 border-black px-4 py-2.5 text-caption font-medium text-black transition hover:bg-black hover:text-paper"
           >
             <IconPlus className="h-3.5 w-3.5" />
             New editor project
@@ -61,19 +65,21 @@ export default function DashboardPage() {
                   <Link
                     key={vp.id}
                     href={`/storyboard/${vp.id}`}
-                    className="group flex flex-col gap-3 rounded-2xl border border-fog bg-paper p-8 transition hover:border-pewter"
+                    className="group flex flex-col gap-3 rounded-2xl border-2 border-black bg-paper p-8 transition hover:bg-black"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-mist text-ink">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-black text-paper transition group-hover:bg-paper group-hover:text-black">
                         <IconFilm className="h-4 w-4" />
                       </div>
                       <StatusPill label={status.label} tone={status.tone} />
                     </div>
                     <div>
-                      <div className="text-heading-sm font-semibold text-ink">{vp.title}</div>
-                      <p className="mt-1 line-clamp-2 text-caption text-smoke">{vp.prompt}</p>
+                      <div className="font-display text-heading-sm font-semibold uppercase tracking-tight text-black transition group-hover:text-paper">
+                        {vp.title}
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-caption text-smoke transition group-hover:text-fog">{vp.prompt}</p>
                     </div>
-                    <span className="mt-auto text-caption text-smoke">{timeAgo(vp.createdAt)}</span>
+                    <span className="mt-auto text-caption text-smoke transition group-hover:text-fog">{timeAgo(vp.createdAt)}</span>
                   </Link>
                 );
               })}
@@ -86,13 +92,15 @@ export default function DashboardPage() {
                 <Link
                   key={p.id}
                   href={`/editor/${p.id}`}
-                  className="group flex flex-col gap-3 rounded-2xl border border-fog bg-paper p-8 transition hover:border-pewter"
+                  className="group flex flex-col gap-3 rounded-2xl border-2 border-black bg-paper p-8 transition hover:bg-black"
                 >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-mist text-ink">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-black text-paper transition group-hover:bg-paper group-hover:text-black">
                     <IconFilm className="h-4 w-4" />
                   </div>
-                  <div className="text-heading-sm font-semibold text-ink">{p.title}</div>
-                  <span className="mt-auto text-caption text-smoke">{timeAgo(p.updatedAt)}</span>
+                  <div className="font-display text-heading-sm font-semibold uppercase tracking-tight text-black transition group-hover:text-paper">
+                    {p.title}
+                  </div>
+                  <span className="mt-auto text-caption text-smoke transition group-hover:text-fog">{timeAgo(p.updatedAt)}</span>
                 </Link>
               ))}
             </div>
@@ -116,9 +124,9 @@ function Section({
 }) {
   return (
     <section className="flex flex-col gap-4">
-      <h2 className="text-heading font-semibold text-ink">{title}</h2>
+      <h2 className="font-display text-[28px] font-semibold uppercase tracking-tight text-black">{title}</h2>
       {empty ? (
-        <div className="rounded-2xl border border-dashed border-fog px-8 py-12 text-center text-caption text-smoke">
+        <div className="rounded-2xl border-2 border-dashed border-black/30 px-8 py-12 text-center text-caption text-smoke">
           {emptyLabel}
         </div>
       ) : (

@@ -1,9 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
-import { IconFilm } from "./icons";
 
 const LINKS = [
   { href: "/dashboard", label: "Dashboard" },
@@ -19,10 +19,10 @@ export default function Nav() {
     <header className="sticky top-0 z-30 border-b border-fog bg-paper/95 py-2 backdrop-blur">
       <div className="mx-auto flex max-w-[1200px] items-center justify-between px-6 sm:px-10">
         <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-charcoal text-paper">
-            <IconFilm className="h-4 w-4" />
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-charcoal">
+            <Image src="/logo.jpg" alt="" width={20} height={20} className="rounded-[3px]" />
           </div>
-          <span className="text-heading-sm font-semibold tracking-tight text-ink">Manim Studio</span>
+          <span className="font-display text-heading-sm font-semibold tracking-tight text-ink">Manim Studio</span>
         </Link>
 
         <SignedIn>

@@ -26,13 +26,17 @@ export interface Version {
 export type RenderStatus = "QUEUED" | "ACTIVE" | "COMPLETED" | "FAILED" | "TIMEOUT";
 
 export type VideoProjectStatus = "PLANNING" | "PLANNED" | "GENERATING" | "DONE" | "FAILED";
+export type VideoProjectMode = "SCENES" | "SHORT";
 
 export interface VideoProject {
   id: string;
   title: string;
   prompt: string;
+  mode: VideoProjectMode;
   status: VideoProjectStatus;
   errorMessage: string | null;
+  outputUrl: string | null;
+  durationMs: number | null;
   createdAt: string;
 }
 
@@ -110,10 +114,10 @@ export function createApiClient(getToken: () => Promise<string | null>) {
 
     getBalance: () => apiFetch<{ balance: number }>(getToken, "/api/me"),
 
-    createVideoProject: (prompt: string) =>
+    createVideoProject: (prompt: string, mode: VideoProjectMode = "SCENES") =>
       apiFetch<{ videoProject: VideoProject; scenes: Scene[] }>(getToken, "/api/video-projects", {
         method: "POST",
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, mode }),
       }),
 
     listVideoProjects: () => apiFetch<VideoProject[]>(getToken, "/api/video-projects"),
@@ -123,6 +127,23 @@ export function createApiClient(getToken: () => Promise<string | null>) {
 
     generateVideo: (id: string) =>
       apiFetch<{ status: string }>(getToken, `/api/video-projects/${id}/generate`, { method: "POST" }),
+
+    updateScene: (videoProjectId: string, sceneId: string, data: { narration?: string; visualIntent?: string }) =>
+      apiFetch<Scene>(getToken, `/api/video-projects/${videoProjectId}/scenes/${sceneId}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+
+    deleteScene: (videoProjectId: string, sceneId: string) =>
+      apiFetch<{ ok: true }>(getToken, `/api/video-projects/${videoProjectId}/scenes/${sceneId}`, {
+        method: "DELETE",
+      }),
+
+    reorderScenes: (videoProjectId: string, sceneIds: string[]) =>
+      apiFetch<Scene[]>(getToken, `/api/video-projects/${videoProjectId}/scenes/reorder`, {
+        method: "POST",
+        body: JSON.stringify({ sceneIds }),
+      }),
 
     watchRender: async (
       renderId: string,
