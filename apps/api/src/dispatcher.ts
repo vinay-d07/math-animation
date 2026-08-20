@@ -10,13 +10,14 @@ import { env } from "./env.js";
 import type { RenderJobData, RenderJobResult } from "./types.js";
 
 async function processRenderJob(job: Job<RenderJobData>): Promise<RenderJobResult> {
-  const { sceneCode, sceneClassName, quality, renderId, sceneId } = job.data;
+  const { sceneCode, sceneClassName, quality, renderId, sceneId, narrationAudioBase64 } = job.data;
   const start = Date.now();
 
   if (renderId) await updateRenderStatus(renderId, { status: "ACTIVE" });
   if (sceneId) await updateSceneStatus(sceneId, { status: "ACTIVE" });
 
-  const result = await renderSceneInSandbox(sceneCode, sceneClassName, quality);
+  const narrationAudio = narrationAudioBase64 ? Buffer.from(narrationAudioBase64, "base64") : undefined;
+  const result = await renderSceneInSandbox(sceneCode, sceneClassName, quality, narrationAudio);
   await recordRenderMetric({ success: result.success, durationMs: result.durationMs, quality });
 
   if (!result.success || !result.videoBuffer) {

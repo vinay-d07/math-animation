@@ -1,15 +1,33 @@
 import { generateText } from "ai";
 import { llmProvider } from "./provider.js";
+import type { VideoGenerationMode } from "./planStoryboard.js";
+import { withRateLimitRetry } from "./withRateLimitRetry.js";
 
-const SYSTEM_PROMPT = `You are writing a Manim (Python) scene for one clip of a short math-education video.
+const DURATION_GUIDANCE: Record<VideoGenerationMode, string> = {
+  SCENES: "Keep the animation under ~20 seconds and runnable end-to-end with `manim render`.",
+  SHORT:
+    "This scene's narration will become its actual audio track (roughly 20-40 seconds spoken), " +
+    "and the video is padded by freezing the last frame if the animation finishes before the " +
+    "narration does — so aim for ~25-40 seconds of animation with several sequential visual " +
+    "beats (not one action followed by a long idle `self.wait()`), so the scene stays visually " +
+    "active for roughly as long as it's being narrated.",
+};
+
+function buildSystemPrompt(mode: VideoGenerationMode): string {
+  return `You are writing a Manim (Python) scene for one clip of a math-education video.
 
 Rules:
 - Only use the manim, numpy, and math packages. Never reference os, subprocess, socket, sys, ctypes, eval, exec, open, or any networking/filesystem functionality.
 - Return ONLY the complete Python source for the scene file — no explanations, no markdown code fences.
 - Define exactly one Scene subclass, named exactly as given.
 - Use a plain \`Scene\` (2D), not \`ThreeDScene\` or \`MovingCameraScene\`, unless the visual description explicitly requires 3D or camera movement — 2D keeps every mobject facing the viewer by construction, which a 3D camera does not guarantee.
-- Keep the animation under ~20 seconds and runnable end-to-end with \`manim render\`.
+- ${DURATION_GUIDANCE[mode]}
 - make sure the code renders a clean video without any inconsistencies
+
+Avoiding visual distortion — the most common ways generated scenes come out visibly broken:
+- Never call \`.stretch()\`, \`.stretch_to_fit_width()\`, \`.stretch_to_fit_height()\`, or set \`.width\`/\`.height\` independently of each other on a mobject that should keep its proportions (circles, squares, icons, images, text). Any of these warps the shape non-uniformly — a circle becomes an oval, a square becomes a rectangle. To resize while preserving proportions, use uniform \`.scale(factor)\` or \`.scale_to_fit_width(...)\`/\`.scale_to_fit_height(...)\` (these two DO preserve aspect ratio, unlike \`stretch_to_fit_*\`).
+- Never let two mobjects' bounding boxes overlap unless the overlap is the deliberate point (e.g. a highlight box). Before adding a new object near an existing one, position it with \`.next_to(existing, DIRECTION, buff=0.3)\` or arrange the group with \`VGroup(...).arrange(direction, buff=0.3)\` rather than guessing coordinates — guessed coordinates are the main cause of overlapping/collided text and shapes.
+- Double check z-ordering when objects visually cross: use \`.set_z_index(n)\` or reorder \`self.add\`/animation calls so foreground objects are added after background ones, otherwise a mobject can appear to render "behind" something it should be in front of.
 
 Math and symbols — this is a math-education video, get this right:
 - Any equation, formula, function, or mathematical symbol (=, ×, ÷, ≤, ≥, ≠, √, ∑, ∫, π, ∞, fractions, exponents, subscripts) MUST be rendered with \`MathTex\` or \`Tex\`, never with \`Text\`. \`Text\` renders those characters as plain glyphs (or not at all) — it is only for prose labels/titles.
@@ -27,12 +45,19 @@ Framing — every scene will be judged on whether it stays fully on screen, so b
 - All text and equations must be added as normal (non-rotated, non-tilted) mobjects with default orientation, so they read left-to-right facing the viewer exactly like a slide — never rotate a \`Text\`/\`MathTex\`/\`Tex\` mobject about the X or Y axis.
 
 Common Manim API mistakes to avoid:
-- \`Sector\` only takes \`radius\`, \`start_angle\`, and \`angle\` — it does NOT take \`inner_radius\`/\`outer_radius\` (those belong to its parent class \`AnnularSector\`; passing them to \`Sector\` raises a duplicate-kwarg TypeError).`;
+- \`Sector\` only takes \`radius\`, \`start_angle\`, and \`angle\` — it does NOT take \`inner_radius\`/\`outer_radius\` (those belong to its parent class \`AnnularSector\`; passing them to \`Sector\` raises a duplicate-kwarg TypeError).
+- This is Manim **Community Edition** (the \`manim\` package, v0.18-0.19) — NOT ManimGL (3b1b's separate, incompatible library, also imported as \`manim\` in a lot of older tutorials/code you may have seen). Do not use ManimGL-only APIs:
+  - No \`.get_graph(...)\` on \`Axes\` — it was removed; use \`axes.plot(function, x_range=[...], color=...)\` instead.
+  - No \`.background_lines\` or \`.faded_lines\` attributes on \`Axes\`/\`NumberPlane\` — those don't exist in Community Edition. To color a \`NumberPlane\`'s grid, pass \`background_line_style={"stroke_color": ..., "stroke_width": ...}\` to its constructor instead of touching an attribute after creation. Plain \`Axes\` has no background grid at all.
+  - No \`ShowCreation\` (use \`Create\`), no \`TextMobject\`/\`TexMobject\` (use \`Text\`/\`Tex\`), no class-level \`CONFIG = {...}\` dicts (pass kwargs directly to \`__init__\`/the constructor instead).
+  - If you're not sure whether an attribute or method exists on a Community Edition mobject, prefer a documented, commonly-used alternative over guessing a plausible-sounding name.`;
+}
 
 export async function generateSceneCode(
   sceneClassName: string,
   narration: string,
   visualIntent: string,
+  mode: VideoGenerationMode = "SCENES",
   previousError?: string
 ): Promise<string> {
   const retryNote = previousError
@@ -47,11 +72,13 @@ Visual description: ${visualIntent}${retryNote}
 
 Write the full Manim scene code now.`;
 
-  const { text } = await generateText({
-    model: llmProvider.model(),
-    system: SYSTEM_PROMPT,
-    prompt,
-  });
+  const { text } = await withRateLimitRetry(() =>
+    generateText({
+      model: llmProvider.model(),
+      system: buildSystemPrompt(mode),
+      prompt,
+    })
+  );
 
   return stripCodeFences(text);
 }

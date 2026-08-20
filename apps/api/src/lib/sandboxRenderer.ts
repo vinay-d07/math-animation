@@ -35,13 +35,16 @@ interface ValidatorVerdict {
 export async function renderSceneInSandbox(
   sceneCode: string,
   sceneClassName: string,
-  quality: "low" | "high"
+  quality: "low" | "high",
+  narrationAudio?: Buffer
 ): Promise<SandboxRenderResult> {
   const config = QUALITY_CONFIG[quality];
   const jobId = randomUUID();
   const jobDir = `/home/user/${jobId}`;
   const scenePath = `${jobDir}/scene.py`;
   const mediaDir = `${jobDir}/media`;
+  const narrationPath = `${jobDir}/narration.wav`;
+  const muxedPath = `${jobDir}/muxed.mp4`;
 
   const start = Date.now();
   const sbx = await Sandbox.create(env.E2B_TEMPLATE_ID, {
@@ -90,8 +93,34 @@ export async function renderSceneInSandbox(
       };
     }
 
-    const bytes = await sbx.files.read(match.path, { format: "bytes" });
-    return { success: true, durationMs, videoBuffer: Buffer.from(bytes) };
+    if (!narrationAudio) {
+      const bytes = await sbx.files.read(match.path, { format: "bytes" });
+      return { success: true, durationMs, videoBuffer: Buffer.from(bytes) };
+    }
+
+    // Mux narration onto the rendered clip, in the same (already-network-
+    // less) sandbox, using the ffmpeg already baked into the image. If the
+    // narration runs longer than the animation, the video is padded by
+    // freezing its last frame — the narration is what has to finish, not
+    // an arbitrary animation length. Audio bytes are pushed in via the E2B
+    // file-write API from this (trusted, network-having) process; the
+    // sandbox itself never reaches out anywhere to fetch them.
+    await sbx.files.write(
+      narrationPath,
+      narrationAudio.buffer.slice(narrationAudio.byteOffset, narrationAudio.byteOffset + narrationAudio.byteLength) as ArrayBuffer
+    );
+    await sbx.commands.run(
+      [
+        `VIDEO_DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "${match.path}")`,
+        `AUDIO_DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "${narrationPath}")`,
+        `PAD=$(python3 -c "print(max(0.0, float('$AUDIO_DUR') - float('$VIDEO_DUR')))")`,
+        `ffmpeg -y -i "${match.path}" -i "${narrationPath}" -filter_complex "[0:v]tpad=stop_mode=clone:stop_duration=$PAD[v]" -map "[v]" -map 1:a -c:v libx264 -preset veryfast -c:a aac "${muxedPath}"`,
+      ].join(" && "),
+      { cwd: jobDir, timeoutMs: 60_000 }
+    );
+
+    const muxedBytes = await sbx.files.read(muxedPath, { format: "bytes" });
+    return { success: true, durationMs, videoBuffer: Buffer.from(muxedBytes) };
   } catch (err) {
     const durationMs = Date.now() - start;
     if (err instanceof CommandExitError) {

@@ -8,6 +8,16 @@ import { runVideoGeneration } from "../videoGeneration.js";
 
 const createSchema = z.object({
   prompt: z.string().min(3).max(500),
+  mode: z.enum(["SCENES", "SHORT"]).default("SCENES"),
+});
+
+const updateSceneSchema = z.object({
+  narration: z.string().min(1).max(900).optional(),
+  visualIntent: z.string().min(1).max(600).optional(),
+});
+
+const reorderSchema = z.object({
+  sceneIds: z.array(z.string()).min(1),
 });
 
 export function registerVideoProjectRoutes(app: FastifyInstance) {
@@ -25,12 +35,12 @@ export function registerVideoProjectRoutes(app: FastifyInstance) {
     }
 
     const videoProject = await prisma.videoProject.create({
-      data: { userId: request.userId, title: body.prompt.slice(0, 80), prompt: body.prompt, status: "PLANNING" },
+      data: { userId: request.userId, title: body.prompt.slice(0, 80), prompt: body.prompt, mode: body.mode, status: "PLANNING" },
     });
 
     let storyboard;
     try {
-      storyboard = await planStoryboard(body.prompt);
+      storyboard = await planStoryboard(body.prompt, body.mode);
     } catch (err) {
       await prisma.videoProject.update({
         where: { id: videoProject.id },
@@ -101,6 +111,88 @@ export function registerVideoProjectRoutes(app: FastifyInstance) {
       });
 
       return { videoProject, scenes };
+    }
+  );
+
+  // Storyboard editing — narration/visual-intent edits, deletion, and
+  // reordering are only allowed while the project is still PLANNED (i.e.
+  // before "Generate" is pressed). Once generation starts, scenes are
+  // being actively consumed by the render pipeline and edits would race it.
+  app.patch<{ Params: { id: string; sceneId: string } }>(
+    "/api/video-projects/:id/scenes/:sceneId",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      const videoProject = await loadOwnedVideoProject(request.params.id, request.userId);
+      if (!videoProject) return reply.code(404).send({ error: "Video project not found" });
+      if (videoProject.status !== "PLANNED") {
+        return reply.code(409).send({ error: "Scenes can only be edited before generation starts" });
+      }
+
+      const scene = await prisma.scene.findUnique({ where: { id: request.params.sceneId } });
+      if (!scene || scene.videoProjectId !== videoProject.id) {
+        return reply.code(404).send({ error: "Scene not found" });
+      }
+
+      const body = updateSceneSchema.parse(request.body);
+      const updated = await prisma.scene.update({ where: { id: scene.id }, data: body });
+      return updated;
+    }
+  );
+
+  app.delete<{ Params: { id: string; sceneId: string } }>(
+    "/api/video-projects/:id/scenes/:sceneId",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      const videoProject = await loadOwnedVideoProject(request.params.id, request.userId);
+      if (!videoProject) return reply.code(404).send({ error: "Video project not found" });
+      if (videoProject.status !== "PLANNED") {
+        return reply.code(409).send({ error: "Scenes can only be edited before generation starts" });
+      }
+
+      const scene = await prisma.scene.findUnique({ where: { id: request.params.sceneId } });
+      if (!scene || scene.videoProjectId !== videoProject.id) {
+        return reply.code(404).send({ error: "Scene not found" });
+      }
+
+      const remaining = await prisma.scene.findMany({
+        where: { videoProjectId: videoProject.id, id: { not: scene.id } },
+        orderBy: { order: "asc" },
+      });
+      if (remaining.length === 0) {
+        return reply.code(409).send({ error: "A video needs at least one scene" });
+      }
+
+      await prisma.scene.delete({ where: { id: scene.id } });
+      // Close the gap left in `order` so scenes stay contiguously 0..N-1 —
+      // generation and the final stitch both rely on `order` for sequencing.
+      await Promise.all(remaining.map((s, i) => prisma.scene.update({ where: { id: s.id }, data: { order: i } })));
+
+      return { ok: true };
+    }
+  );
+
+  app.post<{ Params: { id: string } }>(
+    "/api/video-projects/:id/scenes/reorder",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      const videoProject = await loadOwnedVideoProject(request.params.id, request.userId);
+      if (!videoProject) return reply.code(404).send({ error: "Video project not found" });
+      if (videoProject.status !== "PLANNED") {
+        return reply.code(409).send({ error: "Scenes can only be reordered before generation starts" });
+      }
+
+      const body = reorderSchema.parse(request.body);
+      const existing = await prisma.scene.findMany({ where: { videoProjectId: videoProject.id } });
+      const existingIds = new Set(existing.map((s) => s.id));
+
+      if (body.sceneIds.length !== existing.length || !body.sceneIds.every((id) => existingIds.has(id))) {
+        return reply.code(400).send({ error: "sceneIds must be exactly this project's scene ids" });
+      }
+
+      await Promise.all(body.sceneIds.map((sceneId, i) => prisma.scene.update({ where: { id: sceneId }, data: { order: i } })));
+
+      const scenes = await prisma.scene.findMany({ where: { videoProjectId: videoProject.id }, orderBy: { order: "asc" } });
+      return scenes;
     }
   );
 
