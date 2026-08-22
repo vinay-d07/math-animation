@@ -102,13 +102,27 @@ enum VideoProjectStatus {
   FAILED
 }
 
+enum VideoProjectMode {
+  /// Quick, silent per-scene clips — no TTS, no final stitch. A handful of
+  /// short (~20s) scenes, each independently watchable.
+  SCENES
+  /// A single narrated 2-5 minute explainer: more/longer scenes, each
+  /// muxed with TTS narration, concatenated into one final video.
+  SHORT
+}
+
 model VideoProject {
   id           String             @id @default(auto()) @map("_id") @db.ObjectId
   userId       String             @db.ObjectId
   title        String
   prompt       String
+  mode         VideoProjectMode   @default(SCENES)
   status       VideoProjectStatus @default(PLANNING)
   errorMessage String?
+  /// Final narrated video — all scene clips (each already muxed with TTS
+  /// narration audio) concatenated into one file. Only set in SHORT mode.
+  outputUrl    String?
+  durationMs   Int?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 }

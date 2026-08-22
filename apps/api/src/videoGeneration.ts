@@ -5,6 +5,7 @@ import { generateSceneCode } from "./llm/generateSceneCode.js";
 import { generateNarrationAudio } from "./llm/generateNarrationAudio.js";
 import type { VideoGenerationMode } from "./llm/planStoryboard.js";
 import { validateSceneCode } from "./validation/astGuard.js";
+import { lintSceneLayout } from "./validation/layoutLint.js";
 import { renderQueue } from "./queue/renderQueue.js";
 import { concatenateClips } from "./lib/videoConcat.js";
 import { uploadRenderOutput } from "./lib/storage.js";
@@ -130,6 +131,12 @@ async function renderSceneWithRetries(
       const validation = await validateSceneCode(code);
       if (!validation.ok) {
         lastError = `Code was rejected by the safety validator: ${validation.reason}`;
+        continue;
+      }
+
+      const lint = lintSceneLayout(code);
+      if (!lint.ok) {
+        lastError = `Code was rejected by the layout check: ${lint.reason}`;
         continue;
       }
 

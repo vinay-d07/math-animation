@@ -37,18 +37,6 @@ export const env = {
   GROQ_MODEL: process.env.GROQ_MODEL ?? "openai/gpt-oss-120b",
   GROQ_TTS_VOICE: process.env.GROQ_TTS_VOICE ?? "troy",
 
-  // Optional second free-tier LLM bucket (https://cloud.cerebras.ai) — an
-  // entirely separate rate-limit pool from Groq's, so routing storyboard
-  // planning here instead of competing with scene-codegen calls for Groq's
-  // budget effectively adds capacity for free. Cerebras' free tier trades
-  // the opposite way from Groq's (30K TPM but only 5 req/min, vs Groq's 8K
-  // TPM / 30 req/min) — good for planning's few-large-calls pattern, bad
-  // for codegen's many-small-concurrent-calls pattern, so codegen and
-  // editing stay on Groq. Unset by default: planStoryboard falls back to
-  // Groq if no key is configured.
-  CEREBRAS_API_KEY: process.env.CEREBRAS_API_KEY,
-  CEREBRAS_MODEL: process.env.CEREBRAS_MODEL ?? "gpt-oss-120b",
-
   // Object storage for rendered clips — Supabase Storage (see apps/api/src/lib/storage.ts).
   get SUPABASE_URL() {
     return required("SUPABASE_URL");
